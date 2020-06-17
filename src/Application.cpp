@@ -250,7 +250,7 @@ int main(void)
 	std::cout << "Fragment*******" << std::endl;
 	std::cout << source.FragmentSource << std::endl;
 	unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);//这里有问题
-	glUseProgram(shader);
+	glUseProgram(shader);//预测和显卡有关
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
