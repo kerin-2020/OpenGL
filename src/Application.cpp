@@ -252,7 +252,7 @@ int main(void)
 	unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);//这里有问题
 	glUseProgram(shader);//预测和显卡有关，
 	/*
-
+	注：
 	显示不了颜色可能是因为glUseProgram(shader) 返回错误GL_INVALID_OPERATION
 	爬了一下YouTube发现也有人有这个问题，而且mac和win都有，个人推测可能是intel显卡和英伟达的OpenGL implement 不一样吧
 
