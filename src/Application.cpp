@@ -6,74 +6,75 @@
 #include <string>
 #include <sstream>
 
-//»ùÓÚÄãÑ¡¶¨µÄShaderºÍBufferÈ¥»æÖÆÄ³¸öÈı½ÇĞÎ£¬OpenGLÊÇÒ»ÖÖ×´Ì¬»ú
+#include "Renderer.h"
 
-//¶¥µãÊôĞÔ Vertex Attribute ºÍ shader
+#include "VertexBuffer.h"
+#include "IndexBuffer.h"
+#include "VertexArray.h"
+#include "VertexBufferLayout.h"
+
+//P11 Attribute set per vertex while the uniform is set per draw
+
+//P12 vertex array: a way to bind vertex buffer with a certain kind of specification 
+//for the layout of that actual vertex buffer
+//change from{ bind shader--> vertex buffer--> set up the vetex layout(attribpoint)--> bind index buffer-
+//--> issue the draw call}
+//to         { bind shader--> vertex array-------------------------------------------> bind index buffer-
+//--> issue the draw call}
+
+//P4:åŸºäºä½ é€‰å®šçš„Shaderå’ŒBufferå»ç»˜åˆ¶æŸä¸ªä¸‰è§’å½¢ï¼ŒOpenGLæ˜¯ä¸€ç§çŠ¶æ€æœºï¼Œæ„æ€æ˜¯OpenGLä¸æ˜¯ä¸€ä¸ªå¯¹è±¡
+//instead of me just saying hey draw me a triangle and pass everything that opengl needs to 
+//know to draw the that triangle it actually knows what it needs to do
+//OpenGL work draw a triangle and base on which buffer and which shader you have selected, to determine
+//what triangle get drawn and where and all of that stuff
+
+//Vertex Attribute å’Œ shader
 /*
 Vertex Attribute:
 
-opengl pipeline µÄ¹¤×÷·½Ê½£ºÌá¹©Í¼ĞÎÀàĞÍ¸øÊı¾İ£¬È»ºó´æ´¢ÔÚGPUÉÏµÄÄÚ´æÀï£¨ÄÚ´æÀï°üº¬ÁËÎÒÃÇÏëÒª»æÖÆµÄËùÓĞÊı¾İ£©
+opengl pipeline çš„å·¥ä½œæ–¹å¼ï¼šæä¾›å›¾å½¢ç±»å‹ç»™æ•°æ®ï¼Œç„¶åå­˜å‚¨åœ¨GPUä¸Šçš„å†…å­˜é‡Œï¼ˆå†…å­˜é‡ŒåŒ…å«äº†æˆ‘ä»¬æƒ³è¦ç»˜åˆ¶çš„æ‰€æœ‰æ•°æ®ï¼‰
 
-È»ºóÎÒÃÇÊ¹ÓÃshader£¨ÔÚGPUÉÏÖ´ĞĞµÄÒ»ÖÖ³ÌĞò£©¶ÁÈ¡Õâ²¿·ÖÊı¾İ£¬È»ºóÔÚÆÁÄ»ÉÏÏÔÊ¾ÏÂÀ´
+ç„¶åæˆ‘ä»¬ä½¿ç”¨shaderï¼ˆåœ¨GPUä¸Šæ‰§è¡Œçš„ä¸€ç§ç¨‹åºï¼‰è¯»å–è¿™éƒ¨åˆ†æ•°æ®ï¼Œç„¶ååœ¨å±å¹•ä¸Šæ˜¾ç¤ºä¸‹æ¥
 
-ÓĞ´ú±íĞÔµÄÊÇ£¬ÎÒÃÇÊµ¼ÊÉÏ»æÖÆÍ¼ĞÎÊ¹ÓÃµÄÊÇÒ»¸öVertex buffer £¨´æ´¢ÔÚGPUÉÏµÄÒ»²¿·ÖÄÚ´æµÄ buffer £©
+æœ‰ä»£è¡¨æ€§çš„æ˜¯ï¼Œæˆ‘ä»¬å®é™…ä¸Šç»˜åˆ¶å›¾å½¢ä½¿ç”¨çš„æ˜¯ä¸€ä¸ªVertex buffer ï¼ˆå­˜å‚¨åœ¨GPUä¸Šçš„ä¸€éƒ¨åˆ†å†…å­˜çš„ buffer ï¼‰
 
-µ±shader Êµ¼ÊÉÏ¿ªÊ¼¶ÁÈ¡ Vertex buffer Ê±£¬ËüĞèÒªÖªµÀ buffer µÄ²¼¾Ö£¨ buffer ÀïÃæÓĞÊ²Ã´£©
+å½“shader å®é™…ä¸Šå¼€å§‹è¯»å– Vertex buffer æ—¶ï¼Œå®ƒéœ€è¦çŸ¥é“ buffer çš„å¸ƒå±€ï¼ˆ buffer é‡Œé¢æœ‰ä»€ä¹ˆï¼‰
 
-Èç¹ûÎÒÃÇ²»ËµÕâ¸ö£¬ËüÖ»ÊÇºÍc++µÄÆäËûÊı¾İÃ»Ê²Ã´Á½Ñù
+å¦‚æœæˆ‘ä»¬ä¸è¯´è¿™ä¸ªï¼Œå®ƒåªæ˜¯å’Œc++çš„å…¶ä»–æ•°æ®æ²¡ä»€ä¹ˆä¸¤æ ·
 
 
 
-glVertexAttribPointer() ²ÎÊı£º
+glVertexAttribPointer() å‘Šè¯‰OpenGLpositionä¸­çš„æ•°æ®åˆ†å¸ƒ
 
 stride: the amount of bytes between each vertex 12 for coordinate(index1), 8 for texture(index2), 12 for normal(index3)(bytes) so the stride is 32 bytes
 
-pointer: Ö¸ÏòÊôĞÔµÄÖ¸Õë coordinate offset = 0 ,texture offset = 12, normal offset = 20
+pointer: æŒ‡å‘å±æ€§çš„æŒ‡é’ˆ coordinate offset = 0 ,texture offset = 12, normal offset = 20
 
 */
 
 /*
-×î³£ÓÃµÄÁ½ÖÖ shader £º
+æœ€å¸¸ç”¨çš„ä¸¤ç§ shader ï¼š
 
 vertex shader OR fragment(pixel) shader
 
  data(CPU) -> GPU -> draw call -> shader
 
- Draw Call¾ÍÊÇCPUµ÷ÓÃÍ¼ĞÎ±à³Ì½Ó¿Ú£¬±ÈÈçDirectX»òOpenGL£¬À´ÃüÁîGPU½øĞĞäÖÈ¾µÄ²Ù×÷¡£
+ Draw Callå°±æ˜¯CPUè°ƒç”¨å›¾å½¢ç¼–ç¨‹æ¥å£ï¼Œæ¯”å¦‚DirectXæˆ–OpenGLï¼Œæ¥å‘½ä»¤GPUè¿›è¡Œæ¸²æŸ“çš„æ“ä½œã€‚
 
- vertex shader: ¸æËß OpenGL ÄãÏëÒª vertex ³öÏÖÔÚÆÁÄ»¿Õ¼äµÄºÎ´¦
+ vertex shader: å‘Šè¯‰ OpenGL ä½ æƒ³è¦ vertex å‡ºç°åœ¨å±å¹•ç©ºé—´çš„ä½•å¤„
 
- fragment(pixel) shader : Õ¤¸ñ»¯£¬Ã¿¸öĞ¡Èı½ÇĞÎÊ²Ã´ÑÕÉ«
+ fragment(pixel) shader : æ …æ ¼åŒ–ï¼Œæ¯ä¸ªå°ä¸‰è§’å½¢ä»€ä¹ˆé¢œè‰²
 
- ¼ÇµÃ enable shader
+ è®°å¾— enable shader
 
 */
 
 /*
 
-uniform Êµ¼ÊÉÏÊÇÒ»ÖÖ´Ó CPU ÖĞÈ¡Êı¾İµ½ shader ÀïµÄÒ»ÖÖ·½·¨ 
+uniform å®é™…ä¸Šæ˜¯ä¸€ç§ä» CPU ä¸­å–æ•°æ®åˆ° shader é‡Œçš„ä¸€ç§æ–¹æ³•
 
 */
 
-#define ASSERT(x) if(!(x)) __debugbreak();
-#define GLCall(x) GLClearError();\
-	x;\
-	ASSERT(GLLogCall(#x/* °Ñº¯ÊıÃûµ±×ö×Ö·û´®·µ»Ø */, __FILE__, __LINE__))
-
-static void GLClearError()
-{
-	while (glGetError() != GL_NO_ERROR);
-}
-
-static bool GLLogCall(const char* function, const char* file, int line)
-{
-	while (GLenum error = glGetError())
-	{
-		std::cout << "[OpenGL Error] (" << error << " )" << function << " " << file << ":" << line << std::endl;
-		return false;
-	}
-	return true;
-}
 
 struct ShaderProgramSources
 {
@@ -114,7 +115,7 @@ static ShaderProgramSources ParseShader(const std::string& filepath)
 static unsigned int CompiledShader(unsigned int type, const std::string& source)
 {
 	unsigned int id = glCreateShader(type);
-	const char* src = source.c_str();// &source[0]; Ã÷È· source Ö¸ÏòµÄÊÇÒ»¿éÓĞĞ§µÄµØÖ·
+	const char* src = source.c_str();// &source[0]; ï¿½ï¿½È· source Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½Ğ§ï¿½Äµï¿½Ö·
 	glShaderSource(id, 1, &src, nullptr);
 	glCompileShader(id);
 
@@ -138,6 +139,7 @@ static unsigned int CompiledShader(unsigned int type, const std::string& source)
 	return id;
 }
 
+// bind vertexShader & fragmentShader and link them into a single shader program
 // get a buffer return an ID 
 static unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader)
 {
@@ -164,6 +166,11 @@ int main(void)
 	if (!glfwInit())
 		return -1;
 
+	/*GLCall(glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3));
+	GLCall(glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3));
+	GLCall(glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE));*/
+	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);//GLFW_OPENGL_FORWARD_COMPATæ˜¯æŒ‡å®šç‰ˆæœ¬
+
 
 	/* Create a windowed mode window and its OpenGL context */
 	window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
@@ -182,119 +189,159 @@ int main(void)
 
 	std::cout << glGetString(GL_VERSION) << std::endl;
 
-	float positions[] = {//ÄæÊ±Õë»æÖÆ
-
-		-0.5f, -0.5f, //0
-		 0.5f, -0.5f, //1
-		 0.5f,  0.5f, //2
-
-		  //0.5f, 0.5f,
-		 -0.5f, 0.5f, //3
-		 //-0.5f,-0.5f
-	};//vertex shader »áµ÷ÓÃÈı´Î
-
-	unsigned int indices[] = {
-		0,1,2,
-		2,3,0
-	};
-
-	unsigned int buffer;
-	GLCall(glGenBuffers(1, &buffer));//create an ID :buffer
-
-	//¾ÍÏñ PS Ò»ÑùÔÚÖ¸¶¨²ãÉÏ»­»­
-	GLCall(glBindBuffer(GL_ARRAY_BUFFER, buffer));
-
-	//specify the buffer
-	GLCall(glBufferData(GL_ARRAY_BUFFER, 6 * 2 * sizeof(float), positions, GL_STATIC_DRAW));
-
-	unsigned int vertexArray;
-	glGenVertexArrays(1, &vertexArray);
-	glBindVertexArray(vertexArray);
-	//!!!!! REMEMBER!!!!!!!
-	GLCall(glEnableVertexAttribArray(0));
-
-	GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float)*2, 0));//2: component count
-
-	unsigned int ibo; // index buffer object
-	GLCall(glGenBuffers(1, &ibo));
-	GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
-	GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW)); // indices ÀïÓĞÁù¸öÔªËØ,±ØĞëÊÇ unsigned µÄ
-		
-																		//stride Êµ¼ÊÉÏÊÇÒ»¸öµã£¨±ÈÈçËµÒ»¸ö2Î¬µãÊÇÁ½¸ö¶¥µã×é³É£¬ËùÒÔÔÚÕâÀïÊÇÁ½¸ö float ÀàĞÍ³¤¶È£©
-	////ÓëÉÏÃæÒ»ĞĞÁªÏµ£¬ÈçºÎ»ñÈ¡ÉÏÃæµÄÊı¾İ£¿ L146in vec4 position;
-	//std::string vertexShader =
-	//	"#version 330 core\n"
-	//	"\n"
-	//	"layout(location = 0) in vec4 position;"// OpenGLµÄgl_PositionÊÇÒªÇóÒ»¸ö4Î¬µÄvector
-	//	"\n"
-	//	"void mian()\n"
-	//	"{\n"glEnableVertexAttribArra
-	//	"	gl_Position = position;\n"
-	//	"}\n";
-
-	//std::string fragmentShader =
-	//	"#version 330 core\n"
-	//	"\n"
-	//	"layout(location = 0) out vec4 color;"// OpenGLµÄgl_PositionÊÇÒªÇóÒ»¸ö4Î¬µÄvector
-	//	"\n"
-	//	"void mian()\n"
-	//	"{\n"
-	//	"	color = vec4(0.0, 1.0, 0.0, 1.0);\n"
-	//	"}\n";
-
-	
-
-	ShaderProgramSources source = ParseShader("res/shaders/Basic.shader");
-	std::cout << "Vertex********" << std::endl;
-	std::cout << source.VertexSource << std::endl;
-	std::cout << "Fragment*******" << std::endl;
-	std::cout << source.FragmentSource << std::endl;
-	unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);//ÕâÀïÓĞÎÊÌâ
-	glUseProgram(shader);//Ô¤²âºÍÏÔ¿¨ÓĞ¹Ø£¬
-	/*
-	OpenGL_courses from TheCherno
-
-	¶ÔCherno´óÀĞµÄOpenGL¿Î³Ì¼ÇµÄ±Ê¼Ç Ëæ¸öÈË½ø¶ÈÍ¬²½¸üĞÂ
-
-	¸öÈË×¢ÊÍ²¿·ÖÓÉ¸öÈËÀí½âĞ´ÏÂ£¬ÈçÓĞ´íÎóÇë²»Áß´Í½Ì email ÖÁ 867027145@qq.com
-
-	×¢£º
-	ÏÔÊ¾²»ÁËÑÕÉ«¿ÉÄÜÊÇÒòÎªglUseProgram(shader) ·µ»Ø´íÎóGL_INVALID_OPERATION
-	ÅÀÁËÒ»ÏÂYouTube·¢ÏÖÒ²ÓĞÈËÓĞÕâ¸öÎÊÌâ£¬¶øÇÒmacºÍwin¶¼ÓĞ£¬¸öÈËÍÆ²â¿ÉÄÜÊÇintelÏÔ¿¨ºÍÓ¢Î°´ïµÄOpenGL implement ²»Ò»Ñù°É¡£
-
-	*/
-
-	/* Loop until the user closes the window */
-	while (!glfwWindowShouldClose(window))
 	{
-		/* Render here */
-		glClear(GL_COLOR_BUFFER_BIT);
 
-		/*glBegin(GL_TRIANGLES);
-		glVertex2d(-0.5f, -0.5f);
-		glVertex2d(0.0f, 0.5f);
-		glVertex2d(0.5f, -0.5f);
-		glEnd();*/
+		float positions[] = {
 
-		//glDrawArrays(GL_TRIANGLES, 0, 6);//´ÓbufferÀïµÚ*×é¿ªÊ¼draw£¬Ò»¹²*×éµã
+			-0.5f, -0.5f, //0
+			 0.5f, -0.5f, //1
+			 0.5f,  0.5f, //2
 
-		//GLClearError();
-		//Draw Call
-		GLCall(glDrawElements(GL_TRIANGLES, 6/* ´ú±íindicesÀïÃæ6¸öindex */, GL_UNSIGNED_INT, nullptr));//ÒòÎªÇ°ÃæglBindBufferÒÑ¾­´´½¨°ó¶¨ËùÒÔ¿ÕÖ¸Õë
-		// GL_UNSIGNED_INT Èç¹û±»Ğ´³ÉÁËGL_INT£¬»áµ¼ÖÂºÚÆÁ
-		//GLCheckError();
-		//ASSERT(GLLogCall());
+			  //0.5f, 0.5f,
+			 -0.5f, 0.5f, //3
+			 //-0.5f,-0.5f
+		};//vertex shader ä¼šè¢«è°ƒç”¨ä¸‰æ¬¡
+
+		unsigned int indices[] = {
+			0,1,2,
+			2,3,0
+		};
+
+		// vertex array ç»™ buffer æŒ‡å®š layout 
+
+		unsigned int vao;//vertex array object;
+		GLCall(glGenVertexArrays(1, &vao));
+		GLCall(glBindVertexArray(vao));
+
+		VertexArray va;
+		VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+		VertexBufferLayout layout;
+		layout.Push<float>(2);//GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));
+		va.AddBuffer(vb, layout);
+		
+
+		//unsigned int buffer;
+		//GLCall(glGenBuffers(1, &buffer));//create an ID :buffer
+
+		////å°±åƒ PS ä¸€æ ·åœ¨æŒ‡å®šå±‚ä¸Šç”»ç”»
+		//GLCall(glBindBuffer(GL_ARRAY_BUFFER, buffer));
+
+		////specify the buffer
+		//GLCall(glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float), positions, GL_STATIC_DRAW));
+
+		//!!!!! REMEMBER!!!!!!!
+		/*GLCall(glEnableVertexAttribArray(0));*/
+
+		/* æ‰§è¡Œæ­¤å¥çš„æ—¶å€™ï¼Œ0è¡¨ç¤ºbind bufferå’Œvao*/
+		/*GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALS   E, sizeof(float) * 2, 0));*///2: component count
+
+		IndexBuffer ib(indices, 6);
+
+		//unsigned int ibo; // index buffer object
+		//GLCall(glGenBuffers(1, &ibo));
+		//GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
+		//GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW)); // indices é‡Œæœ‰å…­ä¸ªå…ƒç´ ,å¿…é¡»æ˜¯ unsigned çš„
+																			//stride å®é™…ä¸Šæ˜¯ä¸€ä¸ªç‚¹ï¼ˆæ¯”å¦‚è¯´ä¸€ä¸ª2ç»´ç‚¹æ˜¯ä¸¤ä¸ªé¡¶ç‚¹ç»„æˆï¼Œæ‰€ä»¥åœ¨è¿™é‡Œæ˜¯ä¸¤ä¸ª float ç±»å‹é•¿åº¦ï¼‰
+		////ä¸ä¸Šé¢ä¸€è¡Œè”ç³»ï¼Œå¦‚ä½•è·å–ä¸Šé¢çš„æ•°æ®ï¼Ÿ L146in vec4 position;
+
+
+		//std::string vertexShader =
+		//	"#version 330 core\n"
+		//	"\n"
+		//	"layout(location = 0) in vec4 position;"// OpenGLï¿½ï¿½gl_Positionï¿½ï¿½Òªï¿½ï¿½Ò»ï¿½ï¿½4Î¬ï¿½ï¿½vector
+		//	"\n"
+		//	"void mian()\n"
+		//	"{\n"glEnableVertexAttribArra
+		//	"	gl_Position = position;\n"
+		//	"}\n";
+
+		//std::string fragmentShader =
+		//	"#version 330 core\n"
+		//	"\n"
+		//	"layout(location = 0) out vec4 color;"// OpenGLï¿½ï¿½gl_Positionï¿½ï¿½Òªï¿½ï¿½Ò»ï¿½ï¿½4Î¬ï¿½ï¿½vector
+		//	"\n"
+		//	"void mian()\n"
+		//	"{\n"
+		//	"	color = vec4(0.0, 1.0, 0.0, 1.0);\n"
+		//	"}\n";
+
+		ShaderProgramSources source = ParseShader("res/shaders/Basic.shader");
+		/*std::cout << "Vertex********" << std::endl;
+		std::cout << source.VertexSource << std::endl;
+		std::cout << "Fragment*******" << std::endl;
+		std::cout << source.FragmentSource << std::endl;*/
+		GLCall(unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource));//è¿™é‡Œæœ‰é—®é¢˜
+		GLCall(glUseProgram(shader));//é¢„æµ‹å’Œæ˜¾å¡æœ‰å…³
+
+		GLCall(int location = glGetUniformLocation(shader, "u_Color"));
+		ASSERT(location != -1);
+		GLCall(glUniform4f(location, 0.2f, 0.3f, 0.8f, 1.0f));
+
+		//unbound everything
+		GLCall(glBindVertexArray(0));
+		GLCall(glUseProgram(0));
+		GLCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
+		GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+
+		float r = 0.0f;
+		float increment = 0.05f;
+
+		/* Loop until the user closes the window */
+		while (!glfwWindowShouldClose(window))
+		{
+			/* Render here */
+			glClear(GL_COLOR_BUFFER_BIT);
+
+			GLCall(glUseProgram(shader));
+			GLCall(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+
+			/*æœ‰äº†vaoä»¥åï¼Œå¯ä»¥ä¸ç”¨å£°æ˜ä¸‹é¢è¿™äº›*/
+			/*GLCall(glBindBuffer(GL_ARRAY_BUFFER, buffer));
+			GLCall(glEnableVertexAttribArray(0));
+			GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));*/
+
+			//åªéœ€è¦ç»‘å®švaoå’Œibo
+			//GLCall(glBindVertexArray(vao));
+			/*GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));*/
+			va.Bind();
+			ib.Bind();
+			GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+
+			if (r > 1.0f)
+				increment = -0.05f;
+			else if (r < 0.0f)
+				increment = 0.05f;
+
+			r += increment;
+
+
+			/*glBegin(GL_TRIANGLES);
+			glVertex2d(-0.5f, -0.5f);
+			glVertex2d(0.0f, 0.5f);
+			glVertex2d(0.5f, -0.5f);
+			glEnd();*/
+
+			//glDrawArrays(GL_TRIANGLES, 0, 6);
+
+			//GLClearError();
+			//Draw Call
+			//GLCall(glDrawElements(GL_TRIANGLES, 6/* ä»£è¡¨indicesé‡Œé¢6ä¸ªindex */, GL_UNSIGNED_INT, nullptr));//å› ä¸ºå‰é¢glBindBufferå·²ç»åˆ›å»ºç»‘å®šæ‰€ä»¥ç©ºæŒ‡é’ˆ
+			// GL_UNSIGNED_INT å¦‚æœè¢«å†™æˆäº†GL_INTï¼Œä¼šå¯¼è‡´é»‘å±
+			//GLCheckError();
+			//ASSERT(GLLogCall());
 
 
 
-		/* Swap front and back buffers */
-		glfwSwapBuffers(window);
+			/* Swap front and back buffers */
+			glfwSwapBuffers(window);
 
-		/* Poll for and process events */
-		glfwPollEvents();
+			/* Poll for and process events */
+			glfwPollEvents();
+		}
+
+		glDeleteProgram(shader);
+
 	}
-
-	glDeleteProgram(shader);
 
 	glfwTerminate();
 	return 0;
